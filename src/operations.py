@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import random
 from time import time
 
-from clustering.clustering import KMeansRunner
+from clustering.clustering import KMeansRunner, KMeansConstrainedRunner
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -27,13 +27,18 @@ class DataFrameADM:
         self.kmeans_runner = KMeansRunner()
         self.dict_clustering = {}
         self.dict_scores = {}
+        self.load_data()
 
     def load_data(self):
         p = 0.01
-        df = pd.read_csv(self.data_path, header=0, skiprows=lambda i: i>0 and random.random() > p)
-        # df = pd.read_csv(self.data_path)
-        self.df = df[df['status_transacao']=='aprovado']
-        
+        # df = pd.read_csv(self.data_path, header=0, skiprows=lambda i: i>0 and random.random() > p)
+        df = pd.read_csv(self.data_path)
+        self.__df_original = df[df['status_transacao']=='aprovado']
+        self.restore_df()
+        return self.df
+
+    def restore_df(self):
+        self.df = self.__df_original.copy()
         return self.df
 
     def _get_sample_by_lojistas(self, df):
@@ -43,6 +48,8 @@ class DataFrameADM:
         return self.df_sample_by_lojistas
 
     def _get_random_sample(self, df):
+        if self.qtd_transacoes > len(df):
+            return self.df_sample
         self.df_sample = df.sample(n=self.qtd_transacoes, replace=False, random_state=100)
         return self.df_sample
 
@@ -52,7 +59,6 @@ class DataFrameADM:
         return self.dict_clustering[column], self.dict_scores[column]
 
     def prepare(self):
-        self.load_data()
         self._get_random_sample(self.df)
         self.df_sample['margem_transacao'] = round(self.df_sample['receita_total'] / self.df_sample['valor_transacao'] * 100, 2)
 
